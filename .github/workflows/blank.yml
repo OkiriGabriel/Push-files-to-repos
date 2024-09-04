@@ -47,14 +47,19 @@ jobs:
             }
 
             async function getLhdiRepos() {
-              return github.paginate(github.rest.repos.listForOrg, {
+              const repos = await github.paginate(github.rest.repos.listForOrg, {
                 org: 'test-org-okiri',
                 per_page: 100
               });
-            }
+              return repos
+                .filter(repo => repo.name.startsWith('Test-Repos-to-confirm-files-created
+              ') 
+              # || repo.name.startsWith('lhdi-'))
+                .map(repo => repo.name);
+            }      
 
             async function pushFiles() {
-              const repos = await getLhdiRepos();
+              const repoNames = await getLhdiRepos();
               for (const file of filesToPush) {
                 if (!(await fileExists(file))) {
                   console.log(`File ${file} does not exist in the current repository. Skipping...`);
@@ -63,8 +68,8 @@ jobs:
 
                 try {
                   const content = await fs.readFile(file, 'utf8');
-                  for (const repo of repos) {
-                    if (repo.name === context.repo.repo) continue; // Skip the current repo
+                  for (const repoName of repoNames) {
+                    if (repoName === context.repo.repo) continue; // Skip the current repo
 
                     const branchName = `update-${path.basename(file)}-${Date.now()}`;
                     let createPR = true;
@@ -73,13 +78,13 @@ jobs:
                       try {
                         const { data: existingFile } = await github.rest.repos.getContent({
                           owner: context.repo.owner,
-                          repo: repo.name,
+                          repo: repoName,
                           path: file,
                           ref: 'main'
                         });
                         const existingContent = Buffer.from(existingFile.content, 'base64').toString('utf8');
                         if (existingContent === content) {
-                          console.log(`File ${file} in ${repo.name} is up to date`);
+                          console.log(`File ${file} in ${repoName} is up to date`);
                           createPR = false;
                         }
                       } catch (error) {
@@ -92,7 +97,7 @@ jobs:
                       // Get the latest commit SHA of the main branch
                       const { data: ref } = await github.rest.git.getRef({
                         owner: context.repo.owner,
-                        repo: repo.name,
+                        repo: repoName,
                         ref: 'heads/main'
                       });
                       const latestCommitSha = ref.object.sha;
@@ -100,7 +105,7 @@ jobs:
                       // Create a new branch
                       await github.rest.git.createRef({
                         owner: context.repo.owner,
-                        repo: repo.name,
+                        repo: repoName,
                         ref: `refs/heads/${branchName}`,
                         sha: latestCommitSha
                       });
@@ -110,13 +115,13 @@ jobs:
                         try {
                           const { data: existingFile } = await github.rest.repos.getContent({
                             owner: context.repo.owner,
-                            repo: repo.name,
+                            repo: repoName,
                             path: file,
                             ref: branchName
                           });
                           await github.rest.repos.deleteFile({
                             owner: context.repo.owner,
-                            repo: repo.name,
+                            repo: repoName,
                             path: file,
                             message: `Delete ${file} before updating`,
                             sha: existingFile.sha,
@@ -131,7 +136,7 @@ jobs:
                       // Create or update the file
                       await github.rest.repos.createOrUpdateFileContents({
                         owner: context.repo.owner,
-                        repo: repo.name,
+                        repo: repoName,
                         path: file,
                         message: `Update ${file}`,
                         content: Buffer.from(content).toString('base64'),
@@ -141,14 +146,14 @@ jobs:
                       // Create a pull request
                       await github.rest.pulls.create({
                         owner: context.repo.owner,
-                        repo: repo.name,
+                        repo: repoName,
                         title: `Update ${file}`,
                         head: branchName,
                         base: 'main',
                         body: 'Automated PR to update common files'
                       });
 
-                      console.log(`Created PR for ${file} in ${repo.name}`);
+                      console.log(`Created PR for ${file} in ${repoName}`);
                     }
                   }
                 } catch (error) {
