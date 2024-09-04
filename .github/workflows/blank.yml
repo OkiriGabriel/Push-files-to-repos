@@ -26,10 +26,11 @@ jobs:
         with:
           script: |
                   const fs = require('fs').promises;
+                  const core = require('@actions/core');
                   
-                  // Access inputs directly from github.context.payload
-                  const INPUT_FILES = github.context.payload.inputs?.files || '.github/workflows/create-release-on-tag-push.yml,.github/pull_request_template.md';
-                  const INPUT_DELETE_BEFORE_PUSH = github.context.payload.inputs?.delete_before_push === 'true';
+                  // Access inputs using core.getInput()
+                  const INPUT_FILES = core.getInput('files') || '.github/workflows/create-release-on-tag-push.yml,.github/pull_request_template.md';
+                  const INPUT_DELETE_BEFORE_PUSH = core.getInput('delete_before_push') === 'true';
             
                   console.log('Input Files:', INPUT_FILES);
                   console.log('Delete Before Push:', INPUT_DELETE_BEFORE_PUSH);
