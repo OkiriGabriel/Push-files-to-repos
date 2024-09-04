@@ -27,8 +27,8 @@ jobs:
         with:
           script: |
             const fs = require('fs').promises;
+            const path = require('path');
             
-            // Access inputs using core.getInput()
             const INPUT_FILES = core.getInput('files') || '.github/workflows/create-release-on-tag-push.yml,.github/pull_request_template.md';
             const INPUT_DELETE_BEFORE_PUSH = core.getInput('delete_before_push') === 'true';
 
@@ -36,6 +36,15 @@ jobs:
             console.log('Delete Before Push:', INPUT_DELETE_BEFORE_PUSH);
 
             const filesToPush = INPUT_FILES.split(',');
+
+            async function fileExists(filePath) {
+              try {
+                await fs.access(filePath);
+                return true;
+              } catch {
+                return false;
+              }
+            }
 
             async function getLhdiRepos() {
               return github.paginate(github.rest.repos.listForOrg, {
@@ -47,12 +56,17 @@ jobs:
             async function pushFiles() {
               const repos = await getLhdiRepos();
               for (const file of filesToPush) {
+                if (!(await fileExists(file))) {
+                  console.log(`File ${file} does not exist in the current repository. Skipping...`);
+                  continue;
+                }
+
                 try {
                   const content = await fs.readFile(file, 'utf8');
                   for (const repo of repos) {
                     if (repo.name === context.repo.repo) continue; // Skip the current repo
 
-                    const branchName = `update-${file.replace(/\//g, '-')}-${Date.now()}`;
+                    const branchName = `update-${path.basename(file)}-${Date.now()}`;
                     let createPR = true;
 
                     if (!INPUT_DELETE_BEFORE_PUSH) {
