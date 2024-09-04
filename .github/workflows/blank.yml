@@ -52,7 +52,7 @@ jobs:
                 per_page: 100
               });
               return repos
-                .filter(repo => repo.name.startsWith('Test-Repos-') 
+                .filter(repo => repo.name.startsWith('Test-Repos-')) 
                 .map(repo => repo.name);
             }      
 
