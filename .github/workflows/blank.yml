@@ -48,7 +48,7 @@ jobs:
 
             async function getLhdiRepos() {
               return github.paginate(github.rest.repos.listForOrg, {
-                org: 'department-of-veterans-affairs',
+                org: 'https://github.com/OkiriGabriel',
                 per_page: 100
               });
             }
