@@ -52,9 +52,7 @@ jobs:
                 per_page: 100
               });
               return repos
-                .filter(repo => repo.name.startsWith('Test-Repos-to-confirm-files-created
-              ') 
-              # || repo.name.startsWith('lhdi-'))
+                .filter(repo => repo.name.startsWith('Test-Repos-') 
                 .map(repo => repo.name);
             }      
 
